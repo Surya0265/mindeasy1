@@ -1,0 +1,31 @@
+# Ignore large model files
+fine_tuned_model/model-001.safetensors
+# Optionally ignore all .safetensors files in fine_tuned_model
+fine_tuned_model/*.safetensors
+fine_tuned_model/*.pt
+fine_tuned_model/*.ckpt
+fine_tuned_model/*.bin
+fine_tuned_model/*.h5
+fine_tuned_model/*.onnx
+fine_tuned_model/*.pb
+fine_tuned_model/*.tflite
+fine_tuned_model/*.zip
+fine_tuned_model/*.tar.gz
+fine_tuned_model/*.tar
+fine_tuned_model/*.npz
+fine_tuned_model/*.npy
+/.venv
+/Model/reddit-mental-health-dataset.zip
+/Model/fine_tuned_results
+/Model/data
+/Model/fine_tuned_model
+/Model/*.txt
+/Backend/node_modules
+/Backend/config.js
+/Backend/google_creds.json
+/ESP32_Code/include/config.h
+/ESP32_Code/.pio
+/ESP32_Code/.vscode/c_cpp_properties.json
+/ESP32_Code/.vscode/launch.json
+/Backend/.env
+/fine_tuned_model
