@@ -18,14 +18,16 @@ export interface VoiceOption {
 
 export interface VoiceSettings {
   voice: string;
-  speed: number;
+  stability: number;
+  similarityBoost: number;
 }
 
 export interface AppSettings {
   backendUrl: string;
   ngrokUrl: string;
   voiceId: string;
-  speed: number;
+  stability: number;
+  similarityBoost: number;
 }
 
 export interface ChatResponse {

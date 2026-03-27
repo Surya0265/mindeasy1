@@ -3,7 +3,7 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const groqAudioService = require('./services/groqAudioService'); // Switched from ElevenLabs to Groq
+const elevenlabsService = require('./services/elevenlabsService'); // Switched to ElevenLabs
 require('dotenv').config();
 require('express-async-errors');
 
@@ -69,7 +69,7 @@ app.post('/uploadAudio', async (req, res) => {
             responseSent = true;
             res.status(200).send(transcription);
           }
-          await callGroqForEsp32(transcription);
+          await callElevenLabsForEsp32(transcription);
         } else {
           if (!responseSent) {
             responseSent = true;
@@ -161,8 +161,10 @@ app.get('/status', (req, res) => {
     recordingExists: fs.existsSync(recordFile),
     responseExists: fs.existsSync(voicedMp3File),
     responseReady: shouldDownloadFile,
+    responseReady: shouldDownloadFile,
     groqKeyConfigured: !!groqApiKey,
-    audioServiceProvider: 'Groq (Whisper + LLM) + Murf (TTS)',
+    elevenLabsKeyConfigured: !!process.env.ELEVENLABS_API_KEY,
+    audioServiceProvider: 'ElevenLabs (Scribe STT + Multilingual TTS)',
     ngrokUrl,
   });
 });
@@ -188,11 +190,11 @@ app.get('/debug-audio', (req, res) => {
 });
 
 app.get('/list-voices', async (req, res) => {
-  const voices = groqAudioService.getSupportedVoices();
+  const voices = await elevenlabsService.getSupportedVoices();
   res.json({
     success: true,
     voices,
-    currentVoice: groqAudioService.getVoiceId(),
+    currentVoice: elevenlabsService.getVoiceId(),
   });
 });
 
@@ -205,7 +207,7 @@ app.post('/chat', async (req, res) => {
   const assistantResponse = await generateGroqResponse(userMessage);
 
   try {
-    const chunkBuffers = await groqAudioService.textToSpeechChunks(assistantResponse);
+    const chunkBuffers = await elevenlabsService.textToSpeechChunks(assistantResponse);
     const audioDataUrls = chunkBuffers.map((buffer) => `data:audio/mpeg;base64,${buffer.toString('base64')}`);
 
     // Keep writing one file for compatibility/debug endpoints.
@@ -243,48 +245,38 @@ app.post('/chat', async (req, res) => {
 app.get('/settings', (req, res) => {
   res.json({
     success: true,
-    voiceId: groqAudioService.getVoiceId(),
-    voiceSettings: groqAudioService.getVoiceSettings(),
-    audioProvider: 'Groq (Whisper + LLM) + Murf (TTS)',
+    voiceId: elevenlabsService.getVoiceId(),
+    voiceSettings: elevenlabsService.getVoiceSettings(),
+    audioProvider: 'ElevenLabs (Scribe STT + Multilingual TTS)',
     backendUrl: process.env.BACKEND_URL || `http://localhost:${port}`,
     ngrokUrl,
   });
 });
 
-app.put('/settings/voice', (req, res) => {
+app.put('/settings/voice', async (req, res) => {
   const voiceId = (req.body?.voiceId || '').trim();
-  const allowedVoiceIds = groqAudioService.getSupportedVoices().map((v) => v.id);
-
-  if (!allowedVoiceIds.includes(voiceId)) {
-    return res.status(400).json({
-      success: false,
-      error: `voiceId must be one of: ${allowedVoiceIds.join(', ')}`,
-    });
+  
+  if (!voiceId) {
+    return res.status(400).json({ success: false, error: 'voiceId is required' });
   }
 
-  groqAudioService.setVoiceSettings({ voice: voiceId });
-  return res.json({ success: true, voiceId: groqAudioService.getVoiceId() });
+  elevenlabsService.setVoiceId(voiceId);
+  return res.json({ success: true, voiceId: elevenlabsService.getVoiceId() });
 });
 
 app.put('/settings/voice-config', (req, res) => {
-  const speed = Number(req.body?.speed);
+  const stability = Number(req.body?.stability || 0.5);
+  const similarityBoost = Number(req.body?.similarityBoost || 0.75);
 
-  if (!Number.isFinite(speed) || speed < 0.5 || speed > 2.0) {
-    return res.status(400).json({
-      success: false,
-      error: 'speed must be a number between 0.5 and 2.0.',
-    });
-  }
-
-  groqAudioService.setVoiceSettings({ speed });
-  return res.json({ success: true, voiceSettings: groqAudioService.getVoiceSettings() });
+  elevenlabsService.setVoiceSettings({ stability, similarity_boost: similarityBoost });
+  return res.json({ success: true, voiceSettings: elevenlabsService.getVoiceSettings() });
 });
 
 app.post('/settings/preview', async (req, res) => {
   const previewText = (req.body?.text || 'Hello, I am MindEase. Take a deep breath. You are not alone.').trim();
 
   try {
-    const chunkBuffers = await groqAudioService.textToSpeechChunks(previewText);
+    const chunkBuffers = await elevenlabsService.textToSpeechChunks(previewText);
     const audioDataUrls = chunkBuffers.map((buffer) => `data:audio/mpeg;base64,${buffer.toString('base64')}`);
     return res.json({
       success: true,
@@ -340,11 +332,7 @@ app.listen(port, () => {
 
 async function speechToTextAPI() {
   try {
-    if (!fs.existsSync(recordFile)) {
-      throw new Error('Audio file not found');
-    }
-
-    const transcription = await groqAudioService.transcribeAudio(recordFile);
+    const transcription = await elevenlabsService.transcribeAudio(recordFile);
     if (!transcription) {
       throw new Error('Transcription returned empty result');
     }
@@ -356,10 +344,10 @@ async function speechToTextAPI() {
   }
 }
 
-async function callGroqForEsp32(text) {
+async function callElevenLabsForEsp32(text) {
   const responseText = await generateGroqResponse(text);
   try {
-    await groqAudioService.textToSpeech(responseText, voicedMp3File);
+    await elevenlabsService.textToSpeech(responseText, voicedMp3File);
     shouldDownloadFile = true;
   } catch (error) {
     shouldDownloadFile = false;
