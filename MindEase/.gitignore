@@ -29,3 +29,27 @@ fine_tuned_model/*.npy
 /ESP32_Code/.vscode/launch.json
 /Backend/.env
 /fine_tuned_model
+
+# Frontend local environment and build output
+/Frontend/.env
+/Frontend/.env.*
+/Frontend/dist
+
+# Backend runtime artifacts
+/Backend/tmp
+/Backend/*.log
+/Backend/logs
+
+# Dependencies and caches
+/Backend/node_modules
+/Frontend/node_modules
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Notebook and OS/editor artifacts
+.ipynb_checkpoints/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo

@@ -11,6 +11,7 @@ React + Vite + TypeScript dashboard for the MindEase ESP32 voice assistant backe
 - Emergency quick-help prompt buttons
 - Weekly mood analytics chart (sample data)
 - Settings page for backend URL and ElevenLabs voice tuning
+- Settings page for backend URL, Groq voice selection, and speed tuning
 
 ## Setup
 
@@ -52,6 +53,22 @@ Required routes:
 - `PUT /settings/voice`
 - `PUT /settings/voice-config`
 - `POST /settings/preview`
+
+## Environment
+
+Use local env file for Vite runtime values if needed:
+
+```env
+VITE_BACKEND_URL=http://localhost:3000
+```
+
+Local `.env` files are ignored by the repository.
+
+## Voice Behavior
+
+- Assistant replies may be synthesized in multiple audio chunks for long responses.
+- The frontend plays all returned chunks sequentially.
+- Recommended male voices from backend: `troy`, `daniel`, `austin`.
 
 ## Project structure
 

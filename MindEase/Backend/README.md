@@ -1,262 +1,92 @@
-# MindEase Backend - ElevenLabs Edition
+# MindEase Backend
 
-Mental health chatbot backend with ElevenLabs STT/TTS and Groq LLM.
+Express backend for MindEase voice assistant.
 
-## 🚀 Quick Start
+Current stack:
 
-### 1. Install Dependencies
+- STT: Groq Whisper (`whisper-large-v3`)
+- LLM: Groq Chat Completions (`llama-3.3-70b-versatile`)
+- TTS: Groq Orpheus (`canopylabs/orpheus-v1-english`) with chunked full-response playback
+
+## Quick Start
+
+1. Install dependencies
 
 ```bash
 npm install
 ```
 
-### 2. Configure Environment
+2. Create local environment file
 
-Create/update `.env` file:
+Create `Backend/.env` (this file is gitignored):
 
-```
+```env
 PORT=3000
-ELEVENLABS_API_KEY=sk_your_key_here
-GROQ_API_KEY=gsk_your_key_here
+GROQ_API_KEY=your_groq_api_key
+MURF_API_KEY=your_murf_api_key_if_needed
+NGROK_URL=
 ```
 
-### 3. Start Server
+3. Start server
 
 ```bash
 npm start
 ```
 
-Server will run at `http://localhost:3000/` with both WiFi IPs printed.
+Server runs on `http://localhost:3000`.
 
----
+## Core Routes
 
-## 🌐 Setup ngrok for Remote Access
+ESP32 compatibility routes:
 
-ngrok creates a public URL tunnel to your local server, allowing your ESP32 (or any device) to access the backend from anywhere.
+- `POST /uploadAudio`
+- `GET /checkVariable`
+- `GET /broadcastAudio`
 
-### Step 1: Download & Install ngrok
+Web app routes:
 
-**Option A: Using npm (Recommended)**
+- `POST /chat`
+- `GET /journal`
+- `POST /journal`
+- `GET /list-voices`
+- `GET /settings`
+- `PUT /settings/voice`
+- `PUT /settings/voice-config`
+- `POST /settings/preview`
+- `GET /status`
+- `GET /health`
 
-```bash
-npm install ngrok -g
-```
+## Voice Notes
 
-**Option B: Download from website**
+Supported voice ids include:
 
-1. Go to https://ngrok.com/download
-2. Download ngrok for Windows
-3. Extract to a folder
-4. Add to PATH (optional, but recommended)
+- `troy` (recommended male)
+- `daniel`
+- `austin`
+- `autumn`
+- `diana`
+- `hannah`
 
-### Step 2: Create ngrok Account
+Compatibility aliases:
 
-1. Visit https://ngrok.com
-2. Sign up (free account)
-3. Go to **Dashboard** → **Auth** → Copy your **Auth Token**
+- `nova` -> `autumn`
+- `shimmer` -> `diana`
 
-### Step 3: Authenticate ngrok
+## Development Notes
 
-```bash
-ngrok authtoken YOUR_AUTH_TOKEN_HERE
-```
+- Runtime audio files are written to `Backend/tmp` and are not committed.
+- Keep API keys in `.env` only.
+- Use `.env.example` in future if you want to share a template safely.
 
-Or add it to config file:
+## ngrok (optional)
 
-```bash
-ngrok config add-authtoken YOUR_AUTH_TOKEN_HERE
-```
-
-### Step 4: Start ngrok Tunnel
-
-**Option A: In a separate terminal window**
-
-```bash
-ngrok http 3000
-```
-
-**Option B: In same terminal (run after server starts)**
+If ESP32 is not on the same network, run a tunnel:
 
 ```bash
-# In first terminal
-npm start
-
-# In second terminal
 npx ngrok http 3000
 ```
 
-### Step 5: Copy Public URL
-
-ngrok output will show:
-
-```
-ngrok                                                     (Ctrl+C to quit)
-
-Forwarding     https://a1b2c3d4e5f6.ngrok.io -> http://localhost:3000
-
-Connections   ttl
-```
-
-Copy the **`https://a1b2c3d4e5f6.ngrok.io`** URL (example - yours will be different)
-
----
-
-## 📱 Use ngrok URL in ESP32 Code
-
-Update your ESP32 code to use the ngrok URL:
-
-```cpp
-#define SERVER_URL "https://a1b2c3d4e5f6.ngrok.io"  // Replace with your ngrok URL
-
-// Upload audio
-http.begin(client, SERVER_URL "/uploadAudio");
-
-// Check response ready
-http.begin(client, SERVER_URL "/checkVariable");
-
-// Download response
-http.begin(client, SERVER_URL "/broadcastAudio");
-```
-
----
-
-## 📊 System Flow
-
-```
-ESP32 (via ngrok URL)
-    ↓
-POST /uploadAudio (WAV audio)
-    ↓
-📝 ElevenLabs Scribe v2 STT
-    ↓
-💭 Groq LLM (empathetic response)
-    ↓
-🎙️ ElevenLabs TTS (Rachel voice)
-    ↓
-GET /broadcastAudio
-    ↓
-ESP32 plays audio
-```
-
----
-
-## 🔌 API Endpoints
-
-### POST /uploadAudio
-
-Send audio from ESP32
-
-- **Content-Type:** `application/octet-stream` (raw audio bytes)
-- **Response:** Transcribed text
-- **Example:**
-
-```bash
-curl -X POST --data-binary @recording.wav http://localhost:3000/uploadAudio
-```
-
-### GET /broadcastAudio
-
-Download the AI response audio
-
-- **Response:** WAV/MP3 audio file
-- **Example:**
-
-```bash
-curl http://localhost:3000/broadcastAudio > response.wav
-```
-
-### GET /checkVariable
-
-Check if response is ready
-
-- **Response:** `{"ready": true/false}`
-- **Example:**
-
-```bash
-curl http://localhost:3000/checkVariable
-```
-
-### GET /status
-
-Check system status
-
-- **Response:** JSON with configuration status
-- **Example:**
-
-```bash
-curl http://localhost:3000/status
-```
-
-### GET /test-audio
-
-Download last uploaded audio (debug)
-
-### GET /test-response
-
-Download last response audio (debug)
-
----
-
-## 🎙️ Voice Configuration
-
-Default voice: **rachel** (warm, empathetic)
-
-### Change Voice at Runtime
-
-Edit `server.js` - add this route:
-
-```javascript
-app.post("/setVoice/:voiceId", (req, res) => {
-  const { voiceId } = req.params;
-  elevenlabsService.setVoiceId(voiceId);
-  res.json({ voice: voiceId, message: "Voice updated" });
-});
-```
-
-Then call from ESP32:
-
-```cpp
-http.begin(client, "http://localhost:3000/setVoice/bella");
-http.POST();
-```
-
-### Available Voices
-
-- **rachel** (Default) - Warm, caring, empathetic
-- **bella** - Friendly, supportive
-- **alice** - Clear, professional, empathetic
-- **thomas** - Calm, male voice
-- **adam** - Warm, reassuring male voice
-- **chris** - Natural male voice
-
----
-
-## 🔧 Configuration Files
-
-### `.env` (Keep Secret!)
-
-```
-PORT=3000
-ELEVENLABS_API_KEY=sk_...
-GROQ_API_KEY=gsk_...
-```
-
-### `services/elevenlabsService.js`
-
-Core STT/TTS service using REST API
-
-- `transcribeAudio(filePath)` - Scribe v2 STT
-- `textToSpeech(text, outputPath)` - Multilingual v2 TTS
-- `setVoiceId(id)` - Change voice
-- `getVoiceId()` - Get current voice
-
-### `server.js`
-
-Main Express server
-
-- Handles audio uploads
-- Manages Groq LLM requests
-- Routes for broadcasting responses
+Then set your ESP32 backend URL to the ngrok HTTPS forwarding URL.
 
 ---
 
