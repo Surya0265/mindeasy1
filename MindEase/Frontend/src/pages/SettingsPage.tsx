@@ -18,7 +18,8 @@ export function SettingsPage() {
         const merged: AppSettings = {
           ...settings,
           voiceId: backendSettings.voiceId || settings.voiceId,
-          speed: backendSettings.voiceSettings?.speed ?? settings.speed,
+          stability: backendSettings.voiceSettings?.stability ?? settings.stability ?? 0.5,
+          similarityBoost: backendSettings.voiceSettings?.similarityBoost ?? settings.similarityBoost ?? 0.75,
           ngrokUrl: backendSettings.ngrokUrl || settings.ngrokUrl,
         };
 
@@ -40,7 +41,7 @@ export function SettingsPage() {
     try {
       store.setSettings(settings);
       await api.setVoice(settings.voiceId);
-      await api.setVoiceConfig(settings.speed);
+      await api.setVoiceConfig(settings.stability, settings.similarityBoost);
       setNotice('Settings saved successfully.');
     } catch {
       setNotice('Could not save to backend. Check backend URL and try again.');
@@ -75,7 +76,7 @@ export function SettingsPage() {
 
       <section className="soft-card space-y-4 p-4">
         <label className="block text-sm font-semibold text-slate-700" htmlFor="voiceId">
-          Groq TTS Voice
+          ElevenLabs TTS Voice
         </label>
         <select
           id="voiceId"
@@ -90,23 +91,41 @@ export function SettingsPage() {
           ))}
         </select>
         <p className="text-xs text-slate-500">
-          Tip: For a calm male voice, select Troy, Daniel, or Austin.
+          Tip: High-quality voices like Rachel or Adam provide the most empathetic experience.
         </p>
 
-        <div>
-          <label className="mb-1 block text-sm text-slate-700" htmlFor="speed">
-            Voice Speed ({settings.speed.toFixed(2)}x)
-          </label>
-          <input
-            id="speed"
-            type="range"
-            min={0.5}
-            max={2}
-            step={0.05}
-            value={settings.speed}
-            onChange={(event) => setSettings({ ...settings, speed: Number(event.target.value) })}
-            className="w-full"
-          />
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm text-slate-700" htmlFor="stability">
+              Stability ({(settings as any).stability ?? 0.5})
+            </label>
+            <input
+              id="stability"
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={(settings as any).stability ?? 0.5}
+              onChange={(event) => setSettings({ ...settings, stability: Number(event.target.value) } as any)}
+              className="w-full"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1 block text-sm text-slate-700" htmlFor="similarityBoost">
+              Similarity Boost ({(settings as any).similarityBoost ?? 0.75})
+            </label>
+            <input
+              id="similarityBoost"
+              type="range"
+              min={0}
+              max={1}
+              step={0.05}
+              value={(settings as any).similarityBoost ?? 0.75}
+              onChange={(event) => setSettings({ ...settings, similarityBoost: Number(event.target.value) } as any)}
+              className="w-full"
+            />
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">

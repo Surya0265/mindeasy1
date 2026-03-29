@@ -52,8 +52,8 @@ export const api = {
     return data;
   },
 
-  async setVoiceConfig(speed: number) {
-    const { data } = await client().put('/settings/voice-config', { speed });
+  async setVoiceConfig(stability: number, similarityBoost: number) {
+    const { data } = await client().put('/settings/voice-config', { stability, similarityBoost });
     return data;
   },
 

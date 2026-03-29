@@ -165,6 +165,44 @@ async function textToSpeech(text, outputPath = 'response.mp3', options = {}) {
 }
 
 /**
+ * Generate audio buffers in chunks for long text to ensure better playback.
+ * Useful for chat where the frontend can play segments.
+ *
+ * @param {string} text - The input text
+ * @returns {Promise<Buffer[]>} - List of audio buffers
+ */
+async function textToSpeechChunks(text) {
+  if (!text || text.trim() === '') {
+    throw new Error('Text cannot be empty');
+  }
+
+  // ElevenLabs handles longer strings natively, but we decompose into sentences
+  // for consistent behavior with the existing frontend.
+  const sentences = text.match(/[^.!?]+[.!?]*/g) || [text];
+  const chunks = [];
+  let current = '';
+
+  for (const s of sentences) {
+    if ((current + s).length < 2000) {
+      current += ' ' + s;
+    } else {
+      chunks.push(current.trim());
+      current = s;
+    }
+  }
+  if (current) chunks.push(current.trim());
+
+  const buffers = [];
+  for (const chunk of chunks) {
+    console.log(`🎙️  Generating ElevenLabs chunk (${chunk.length} chars)...`);
+    const buffer = await textToSpeech(chunk, 'temp_chunk.mp3', { outputFormat: 'mp3_44100_128' });
+    buffers.push(buffer);
+  }
+
+  return buffers;
+}
+
+/**
  * Change the voice ID for TTS
  * Available voices include: rachel, bella, alice, thomas, adam, chris, etc.
  * Visit: https://elevenlabs.io/docs/voices
@@ -281,13 +319,36 @@ async function listAvailableVoices() {
   }
 }
 
+/**
+ * Get voices in the simplified format required by the UI.
+ * Matches: { id, name, description }
+ */
+async function getSupportedVoices() {
+  try {
+    const rawVoices = await listAvailableVoices();
+    return (rawVoices || []).map(v => ({
+      id: v.voice_id,
+      name: v.name,
+      description: `${v.category}: ${v.description || 'Voice from ElevenLabs'}`
+    }));
+  } catch (error) {
+    console.warn('⚠️  Could not fetch ElevenLabs voices, returning defaults', error.message);
+    return [
+      { id: 'pNInz6obpgDQGcFmaJgB', name: 'Adam (ElevenLabs)', description: 'Warm conversational' },
+      { id: '21m00Tcm4TlvDq8ikWAM', name: 'Rachel (ElevenLabs)', description: 'Friendly empathetic' }
+    ];
+  }
+}
+
 module.exports = {
   transcribeAudio,
   textToSpeech,
+  textToSpeechChunks,
   setVoiceId,
   getVoiceId,
   setVoiceSettings,
   getVoiceSettings,
   validateApiKey,
   listAvailableVoices,
+  getSupportedVoices,
 };
